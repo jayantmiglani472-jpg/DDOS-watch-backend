@@ -3,24 +3,47 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const helmet = require('helmet');
+const morgan = require('morgan');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+
+app.use(helmet());
+app.use(morgan('dev'));
 app.use(cors());
 app.use(express.json());
 
+// rate limiting after cors
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { error: 'Too many requests, please try again after 15 minutes' }
+});
+app.use('/api/', limiter);
+
+// routes
 app.use('/api/analyze-ip', require('./routes/ipRoutes'));
 app.use('/api/global', require('./routes/globalRoutes'));
 
-app.get('/' , (req,res) => {
-    // console.log("server is running ");
-    res.json({message : 'Server is running' });
-})
+// test route
+app.get('/', (req, res) => {
+  res.json({ message: 'Server is running' });
+});
 
-
+// database
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('MongoDB connected successfully'))
   .catch((err) => console.error('MongoDB connection failed:', err.message));
+
+
+  app.use((err, req , res , next) => {
+    console.error('Unahndeled error: ' , err.stack);
+    res.status(err.status || 500).json({
+      error: err.message || "Something went crazy"
+    });
+  });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
