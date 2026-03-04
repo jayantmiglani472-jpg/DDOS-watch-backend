@@ -56,11 +56,7 @@ const analyzeIP = async (req, res) => {
     const geoData = geoResponse.data;
 
 
-    //////
-    console.log('AbuseIPDB full response:', JSON.stringify(abuseData, null, 2));
 
-
-    /////
 
 
     //save to mongoDB
