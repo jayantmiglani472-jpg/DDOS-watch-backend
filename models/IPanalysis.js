@@ -18,7 +18,12 @@ const ipAnalysisSchema = new mongoose.Schema({
   org: { type: String },
   as: { type: String },
   isProxy: { type: Boolean },
-  analyzedAt: { type: Date, default: Date.now }
+  analyzedAt: { type: Date, default: Date.now },
+  usageType: { type: String, default: '' },
+  lastReportedAt: { type: String, default: null },
+  isTor: { type: Boolean, default: false },
+  domain: { type: String, default: '' },
+  hostnames: { type: [String], default: [] }
 });
 
 const IPAnalysis = mongoose.model('IPAnalysis', ipAnalysisSchema);

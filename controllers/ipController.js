@@ -19,10 +19,10 @@ const analyzeIP = async (req, res) => {
     // });
 
     //call Abuseipdb and ip-api fr geolocation
-    
+
     //caching from mongoDB
     // check if we already have recent data for this IP
-    const existing = await IPAnalysis.findOne({ 
+    const existing = await IPAnalysis.findOne({
       ipAddress: ip,
       analyzedAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) } // within last 1 hour
     });
@@ -30,23 +30,23 @@ const analyzeIP = async (req, res) => {
     if (existing) {
       return res.status(200).json(existing); // return cached data, no API call needed
     }
-    
-    const [abuseResponse , geoResponse] = await Promise.all([
+
+    const [abuseResponse, geoResponse] = await Promise.all([
       axios.get('https://api.abuseipdb.com/api/v2/check', {
         headers: {
-        'Key': process.env.ABUSEIPDB_API_KEY,
-        'Accept': 'application/json'
+          'Key': process.env.ABUSEIPDB_API_KEY,
+          'Accept': 'application/json'
         },
         params: {
-        ipAddress: ip,
-        maxAgeInDays: 90
+          ipAddress: ip,
+          maxAgeInDays: 90
         }
       }),
-      axios.get(`http://ip-api.com/json/${ip}` , {
-         params: {
+      axios.get(`http://ip-api.com/json/${ip}`, {
+        params: {
           fields: 'status,message,country,countryCode,region,regionName,city,district,zip,lat,lon,timezone,isp,org,as,proxy,query'
         }
-      }) 
+      })
 
     ]);
 
@@ -55,8 +55,16 @@ const analyzeIP = async (req, res) => {
     const abuseData = abuseResponse.data.data;
     const geoData = geoResponse.data;
 
+
+    //////
+    console.log('AbuseIPDB full response:', JSON.stringify(abuseData, null, 2));
+
+
+    /////
+
+
     //save to mongoDB
-     const result = {
+    const result = {
       // from AbuseIPDB
       ipAddress: abuseData.ipAddress,
       abuseScore: abuseData.abuseConfidenceScore,
@@ -75,9 +83,14 @@ const analyzeIP = async (req, res) => {
       timezone: geoData.timezone,
       org: geoData.org,
       as: geoData.as,
-      isProxy: geoData.proxy
+      isProxy: geoData.proxy,
+      usageType: abuseData.usageType,
+      lastReportedAt: abuseData.lastReportedAt,
+      isTor: abuseData.isTor,
+      domain: abuseData.domain,
+      hostnames: abuseData.hostnames
     };
-    
+
     const saved = await IPAnalysis.create(result);
 
     // send back to frontend
