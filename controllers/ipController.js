@@ -66,6 +66,9 @@ const analyzeIP = async (req, res) => {
       abuseScore: abuseData.abuseConfidenceScore,
       totalReports: abuseData.totalReports,
       isp: abuseData.isp,
+      numDistinctUsers: abuseData.numDistinctUsers,
+      ipVersion: abuseData.ipVersion,
+      isWhitelisted: abuseData.isWhitelisted,
       // from ip-api
       country: geoData.country,
       countryCode: geoData.countryCode,
