@@ -30,11 +30,11 @@ const getGlobalDDoS = async (req, res) => {
   }
 
   try {
-    const [timeseriesRes, originsRes, targetsRes, protocolRes, vectorRes, bitrateRes, durationRes] = await Promise.all([
+    const [timeseriesRes, originsRes, targetsRes, protocolRes, vectorRes, bitrateRes, durationRes, attackPairsRes] = await Promise.all([
       axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/timeseries', {
         headers: cfHeaders,
         params: {
-          aggInterval: period === '12w' ? '1d' : '1h',  // daily for 12w, hourly for 7d/28d
+          aggInterval: period === '12w' ? '1d' : '1h',
           dateRange: period,
           format: 'json'
         }
@@ -43,6 +43,7 @@ const getGlobalDDoS = async (req, res) => {
         headers: cfHeaders,
         params: {
           dateRange: period,
+          limit: 200,
           format: 'json'
         }
       }),
@@ -52,6 +53,7 @@ const getGlobalDDoS = async (req, res) => {
         headers: cfHeaders,
         params: {
           dateRange: period,
+          limit: 200,
           format: 'json'
         }
       }),
@@ -82,16 +84,23 @@ const getGlobalDDoS = async (req, res) => {
           dateRange: period,
           format: 'json'
         }
+      }),
+      // Real origin→target attack pairs
+      axios.get('https://api.cloudflare.com/client/v4/radar/attacks/layer3/top/attacks', {
+        headers: cfHeaders,
+        params: {
+          dateRange: period,
+          limit: 200,
+          format: 'json'
+        }
       })
     ]);
-    // console.log('Cloudflare timeseries:', JSON.stringify(timeseriesRes.data.result, null, 2));
-    // console.log('Cloudflare origins:', JSON.stringify(originsRes.data.result.top_0, null, 2));
-    // console.log('Cloudflare targets:', JSON.stringify(targetsRes.data.result.top_0, null, 2));
 
     const result = {
       timeseries: timeseriesRes.data.result,
       topOrigins: originsRes.data.result.top_0,
       topTargets: targetsRes.data.result.top_0,
+      attackPairs: attackPairsRes.data.result?.top_0 || [],
       bitrate: bitrateRes.data.result.summary_0,
       duration: durationRes.data.result.summary_0,
       period: period,
