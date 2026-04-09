@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { isIP } = require('node:net');
 const IPAnalysis = require('../models/IPanalysis');
 const { predictIpWithMl } = require('../services/mlService');
 const { buildFinalRisk } = require('../utils/finalRisk');
@@ -22,28 +23,9 @@ const retryRequest = async (fn, retries = 1, delayMs = 2000) => {
   return null;
 };
 
-// Basic IPv4 validation before we hit any external services.
-const isValidIPv4 = (ip) => {
-  const parts = ip.split('.');
-
-  if (parts.length !== 4) {
-    return false;
-  }
-
-  return parts.every((part) => {
-    const num = Number(part);
-    return /^\d{1,3}$/.test(part) && num >= 0 && num <= 255;
-  });
-};
-
-// IPv6 support is kept so the API rejects malformed values cleanly even though
-// the ML service currently focuses on public IPv4.
-const isValidIPv6 = (ip) => {
-  const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-  const ipv6Full = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/;
-
-  return ipv6Regex.test(ip) || ipv6Full.test(ip);
-};
+const ipVersion = (ip) => isIP(ip);
+const isValidIPv4 = (ip) => ipVersion(ip) === 4;
+const isValidIPv6 = (ip) => ipVersion(ip) === 6;
 
 // Private/reserved IPv4 addresses are blocked because the model and live data
 // providers are designed for public internet IPs.
@@ -91,7 +73,7 @@ const analyzeIP = async (req, res) => {
     const ip = req.params.ip.trim();
 
     // Validate early so we fail fast before calling AbuseIPDB, ipwho, or the ML API.
-    if (!isValidIPv4(ip) && !isValidIPv6(ip)) {
+    if (ipVersion(ip) === 0) {
       return res.status(400).json({ error: 'Invalid IP address format' });
     }
 
@@ -146,9 +128,8 @@ const analyzeIP = async (req, res) => {
       : null;
     const mlRiskBand = mlResponse?.risk_band || '';
     const finalRisk = buildFinalRisk({
-      mlProbability,
-      mlBand: mlRiskBand,
-      abuseScore: abuseData.abuseConfidenceScore
+      abuseScore: abuseData.abuseConfidenceScore,
+      isWhitelisted: abuseData.isWhitelisted
     });
 
     // This is the single merged payload that gets saved and sent back to the frontend.

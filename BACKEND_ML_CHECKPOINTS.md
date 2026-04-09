@@ -43,3 +43,16 @@ What this proves:
 - The Node backend is now acting as the orchestration layer correctly.
 - The Python ML API is reachable from the backend.
 - MongoDB can now store both legacy enrichment fields and new ML fields together.
+
+## Checkpoint 3 - Consistency and resilience fixes applied
+
+What changed:
+- `utils/finalRisk.js` was updated so backend `finalRiskScore`, `finalRiskLabel`, and `finalRecommendation` now follow the same AbuseIPDB-first logic that the frontend shows.
+- `controllers/ipControllerIntegrated.js` now uses Node's built-in IP parser instead of the old loose IPv4/IPv6 regex checks.
+- `controllers/ipController.js` was updated with the same stronger IP validation so the legacy controller is no longer looser than the integrated one.
+- `controllers/globalController.js` now uses per-request Cloudflare auth headers and `Promise.allSettled()` so one failed Radar endpoint does not automatically break the whole dashboard response.
+
+Why this matters:
+- The backend JSON, database fields, and dashboard UI now agree on what "final risk" means.
+- Invalid IP strings are less likely to slip through frontend/backend validation mismatches.
+- The global dashboard is more tolerant of partial Cloudflare API failures.

@@ -15,7 +15,9 @@ const predictIpWithMl = async (ip) => {
     `${baseUrl.replace(/\/+$/, '')}/predict`,
     { ip },
     {
-      timeout: 20000,
+      // The ML service performs live feature collection before inference, so
+      // give it a little more room than the individual provider timeouts.
+      timeout: 35000,
       headers: {
         'Content-Type': 'application/json'
       }
